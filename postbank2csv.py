@@ -11,45 +11,52 @@ parser.add_argument('pdf_files', metavar='pdf_file', type=argparse.FileType('r')
 args = parser.parse_args()
 
 year_str = ["Jan", "Feb", "März", "Apr", "May", "Juni", "Juli", "Aug", "Sep", "Okt", "Nov", "Dez"]
-description_ledger_key = {
-    "000000009802": 2250,
-    "masjid al-falah": 2250,
-    "masjid al falah": 2250,
-
-    "schmidt hausverwaltu": 6310,
-    "vattenfall": 6325,
-    "telefonica": 6805,
-    "ionos": 6810,
-    "zakat": 2253,
-    "prs": 2253,
-    "kantin": 10000,
-    "kan- tin": 10000,
-}
 skr_dic = {
-    2250: "Dauerauftrag Spenden",
-    2251: "Spenden",
-    2252: "Spenden von Untermiete",
-    2253: "Spendeaktionen Religiöse",
-    2254: "Spendeaktionen Humanitäre",
-
-    3700: "IHK",
-    3730: "Amt",
-
-    6800: "Porto",
-    6805: "Telefon",
-    6810: "Telefax und Internetkosten",
-    6325: "Gas, Strom, Wasser",
-    6310: "Miete",
-    6420: "Beitrage",
-    6855: "Zinsen",
-
-    10000: "Kantin Jumat",
+    2250: {
+        "category": "Dauerauftrag Spenden",
+        "keys": ["000000009802", "masjid al-falah", "masjid al falah", "operasional"],
+        "description": {
+            "Infaq": ["infaq"],
+            "Operasional Masjid": ["operasional"]
+        }
+    },
+    2253: {
+        "category": "Spendeaktionen Religiöse",
+        "keys": ["zakat"],
+        "description": {
+            "Zakat Maal": ["zakat"],
+            "PRS": ["prs"]
+        }
+    },
+    6805: {
+        "category": "Telefon",
+        "keys": ["telefonica"],
+        "description": "Telefonica"
+    },
+    6810: {
+        "category": "Internet",
+        "keys": ["ionos"],
+        "description": "1 und 1"
+    },
+    6325: {
+        "category": "Gas, Strom, Wasser",
+        "keys": ["vattenfall"],
+        "description": "Vattenfall"
+    },
+    6310: {
+        "category": "Miete",
+        "keys": ["schmidt hausverwaltu"],
+        "description": ""
+    },
+    10000: {
+        "category": "Kantin Jumat",
+        "keys": ["kantin", "kan- tin"],
+        "description": ""
+    },
 }
 
 
 def main():
-    statements = []
-
     for file in args.pdf_files:
         print(file.name)
         statement = parse_statements_from_file(str(file.name))
@@ -109,7 +116,6 @@ def parse_statements_from_file(pdf_filename):
                 in_statement = False
                 if statement: # if dict not empty
                     statements.append(statement)
-                    #print("new statement written", statement)
                     statement = {}
 
             if in_statement:
@@ -140,18 +146,16 @@ def parse_statements_from_file(pdf_filename):
                     statement['lz'] = year_str[month-1]
                     statement['datum'] = f"{str(date_day)}.{month}.{date_year}"
                     statement['steuer'] = 1
-                    statement['bemerkung'] = ""
+                    statement['desc'] = ""
                     statement_first_line = False
                 else:
-                    statement['bemerkung'] += ' '.join(line_token)
-                    statement['bemerkung'] += ' '
+                    statement['desc'] += ' '.join(line_token)
+                    statement['desc'] += ' '
 
-                ledger_id = get_ledger_id(description_ledger_key, statement['bemerkung'])
                 statement['kategorien'] = "-"
-                statement['sachkonten'] = ledger_id
-
-                if ledger_id in skr_dic:
-                    statement['kategorien'] = skr_dic[ledger_id]
+                statement['sachkonten'] = 0
+                statement["bemerkung"] = "---"
+                set_ledger_information(statement)
 
         last_line_token = line_token
 
@@ -161,19 +165,40 @@ def parse_statements_from_file(pdf_filename):
 
     return statements
 
-def get_ledger_id(description_ledger_key, description):
-    ledger_id = 0
+def set_ledger_information(statement):
+    description = statement["desc"].lower()
 
-    for key, value in description_ledger_key.items():
-        if key in description.lower():
-            ledger_id = value
+    for key, data in skr_dic.items():
+        for keyword in data["keys"]:
+            if keyword in description:
+                statement["sachkonten"] = key
+                statement["kategorien"] = data["category"]
+                statement["bemerkung"] = get_description(description, data["description"])
+                break
 
-    return ledger_id
+    print(f"{statement['datum']} {statement['sachkonten']} {statement['bemerkung']}")
+
+def get_description(description, data_description):
+    tmp_desc = "-"
+
+    if isinstance(data_description, dict):
+        for desc, desc_keys in data_description.items():
+            for keyword in desc_keys:
+                if keyword in description:
+                    tmp_desc = desc
+                    break
+            else:
+                continue
+            break
+    else:
+        tmp_desc = data_description
+    
+    return tmp_desc
     
 
 def write_statements_as_csv(filename, statements):
     with open(filename+'.csv', 'w', newline='') as csvfile:
-        fieldnames = ['lz', 'datum', 'soll', 'haben', 'steuer', 'sachkonten', 'kategorien', 'einnahme', 'ausgabe', 'bemerkung']
+        fieldnames = ['lz', 'datum', 'soll', 'haben', 'steuer', 'sachkonten', 'kategorien', 'einnahme', 'ausgabe', 'bemerkung', 'desc']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for statement in statements:
