@@ -5,55 +5,11 @@ import csv
 import subprocess
 import sys
 import tempfile
+import config
 
 parser = argparse.ArgumentParser(description='Convert Postbank account statement pdf files to a single csv file.')
 parser.add_argument('pdf_files', metavar='pdf_file', type=argparse.FileType('r'), nargs='+', help='pdf files to convert')
 args = parser.parse_args()
-
-year_str = ["Jan", "Feb", "März", "Apr", "May", "Juni", "Juli", "Aug", "Sep", "Okt", "Nov", "Dez"]
-skr_dic = {
-    2250: {
-        "category": "Dauerauftrag Spenden",
-        "keys": ["000000009802", "masjid al-falah", "masjid al falah", "operasional"],
-        "description": {
-            "Infaq": ["infaq"],
-            "Operasional Masjid": ["operasional"]
-        }
-    },
-    2253: {
-        "category": "Spendeaktionen Religiöse",
-        "keys": ["zakat"],
-        "description": {
-            "Zakat Maal": ["zakat"],
-            "PRS": ["prs"]
-        }
-    },
-    6805: {
-        "category": "Telefon",
-        "keys": ["telefonica"],
-        "description": "Telefonica"
-    },
-    6810: {
-        "category": "Internet",
-        "keys": ["ionos"],
-        "description": "1 und 1"
-    },
-    6325: {
-        "category": "Gas, Strom, Wasser",
-        "keys": ["vattenfall"],
-        "description": "Vattenfall"
-    },
-    6310: {
-        "category": "Miete",
-        "keys": ["schmidt hausverwaltu"],
-        "description": ""
-    },
-    10000: {
-        "category": "Kantin Jumat",
-        "keys": ["kantin", "kan- tin"],
-        "description": ""
-    },
-}
 
 
 def main():
@@ -123,11 +79,11 @@ def parse_statements_from_file(pdf_filename):
                     try:
                         value = float(''.join(line_token[-2:]).replace('.', '').replace(',', '.'))
                         if value < 0:
-                            statement['soll'] = value
+                            statement['soll'] = str(value).replace('.', ',')
                             statement['einnahme'] = ""
                             statement['ausgabe'] = "x"
                         else:
-                            statement['haben'] = value
+                            statement['haben'] = str(value).replace('.', ',')
                             statement['einnahme'] = "x"
                             statement['ausgabe'] = ""
                     except ValueError:
@@ -143,7 +99,7 @@ def parse_statements_from_file(pdf_filename):
 
                     data_type = ' '.join(line_token[1:-2])
                     month = int(date_month)
-                    statement['lz'] = year_str[month-1]
+                    statement['lz'] = config.year_str[month-1]
                     statement['datum'] = f"{str(date_day)}.{month}.{date_year}"
                     statement['steuer'] = 1
                     statement['desc'] = ""
@@ -168,36 +124,21 @@ def parse_statements_from_file(pdf_filename):
 def set_ledger_information(statement):
     description = statement["desc"].lower()
 
-    for key, data in skr_dic.items():
-        for keyword in data["keys"]:
+    for key, data in config.skr_dic.items():
+        for keyword in config.get_keys(data):
             if keyword in description:
                 statement["sachkonten"] = key
                 statement["kategorien"] = data["category"]
-                statement["bemerkung"] = get_description(description, data["description"])
+                statement["bemerkung"] = config.get_description(description, data["description"])
                 break
-
-    print(f"{statement['datum']} {statement['sachkonten']} {statement['bemerkung']}")
-
-def get_description(description, data_description):
-    tmp_desc = "-"
-
-    if isinstance(data_description, dict):
-        for desc, desc_keys in data_description.items():
-            for keyword in desc_keys:
-                if keyword in description:
-                    tmp_desc = desc
-                    break
-            else:
-                continue
-            break
-    else:
-        tmp_desc = data_description
-    
-    return tmp_desc
     
 
 def write_statements_as_csv(filename, statements):
-    with open(filename+'.csv', 'w', newline='') as csvfile:
+    csv_filename = filename
+    if ".pdf" in filename:
+        csv_filename = filename.replace("pdf", "csv")
+
+    with open(csv_filename, 'w', newline='') as csvfile:
         fieldnames = ['lz', 'datum', 'soll', 'haben', 'steuer', 'sachkonten', 'kategorien', 'einnahme', 'ausgabe', 'bemerkung', 'desc']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
