@@ -1,4 +1,4 @@
-
+iban_prs = "DE22100100100016647102"
 year_str = ["Jan", "Feb", "März", "Apr", "May", "Juni", "Juli", "Aug", "Sep", "Okt", "Nov", "Dez"]
 skr_dic = {
     #possible for multiple description, keys should empty, it will takes from each description
@@ -6,8 +6,16 @@ skr_dic = {
         "category": "Dauerauftrag Spenden",
         "keys": [],
         "description": {
-            "Infaq": ["infaq", "sedekah", "infak"],
-            "Operasional Masjid": ["operasional", "000000009802"]
+            "Operasional Masjid": ["operasional", "000000009802"],
+            "Infaq": ["infaq", "infak"]
+        }
+    },
+    2251: {
+        "category": "Spenden",
+        "keys": [],
+        "description": {
+            "Operasional Masjid": ["ope- rasional", "opera- sional",],
+            "Infaq": ["sedekah", "se- dekah"]
         }
     },
     2253: {
@@ -15,7 +23,7 @@ skr_dic = {
         "keys": [],
         "description": {
             "Zakat Fitrah": ["fitrah"],
-            "Zakat Maal": ["zakat"],
+            "Zakat Maal": ["zakat", "penghasilan"],
             "PRS": ["prs", "proyekrumahsurga@iwkz.de"],
             "Qurban": ["qurban"]
         }
@@ -25,6 +33,7 @@ skr_dic = {
         "keys": [],
         "description": {
             "ACT": ["act"],
+            "HI": ["fight corona", "corona", "gerakan", "gera- kan"]
         }
     },
 
@@ -49,11 +58,21 @@ skr_dic = {
         "keys": ["schmidt hausverwaltu"],
         "description": ""
     },
+    6420: {
+        "category": "Rundfunk ARD,ZDF,Dradio",
+        "keys": ["rundfunk ard"],
+        "description": "Rundfunk "
+    },
     10000: {
         "category": "Kantin Jumat",
         "keys": ["kantin", "kan- tin"],
         "description": ""
     },
+    10001: {
+        "category": "Saso",
+        "keys": ["saso", "sa- so", "sate somay"],
+        "description": ""
+    }
 }
 
 def get_keys(data):
