@@ -59,6 +59,7 @@ def parse_statements_from_file(pdf_filename):
         if in_toprow_area:
             file_number = int(line_token[0])
             file_year = int(line_token[1])
+            iban = f"{line_token[4]}{line_token[5]}{line_token[6]}{line_token[7]}{line_token[8]}{line_token[9]}"
             in_toprow_area = False
 
         if in_statement_area:
@@ -111,7 +112,11 @@ def parse_statements_from_file(pdf_filename):
                 statement['kategorien'] = "-"
                 statement['sachkonten'] = 0
                 statement["bemerkung"] = "---"
-                set_ledger_information(statement)
+
+                if iban == config.iban_prs and statement['einnahme'] != '':
+                    set_static_ledger_from_iban(2253, "PRS", statement)
+                else:
+                    set_ledger_information(statement)
 
         last_line_token = line_token
 
@@ -145,6 +150,12 @@ def write_statements_as_csv(filename, statements):
         for statement in statements:
             writer.writerow(statement)
 
+def set_static_ledger_from_iban(ledger, description, statement):
+    ledger_info = config.skr_dic[ledger]
+
+    statement["sachkonten"] = ledger
+    statement["kategorien"] = ledger_info["category"]
+    statement["bemerkung"] = description
 
 if __name__ == "__main__":
     main()
